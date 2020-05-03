@@ -1,0 +1,66 @@
+/* 
+ * Decoder function for ChirpStack to unpack the payload of Bosch Parking Lot Sensors firmaware version 0.23.3
+ *
+ *
+ * This function was created by Al Bennett at Sensational Systems - al@sensational.systems
+ * Modified by Piotr Pabian - ppabian@pemsy.com
+ */
+
+function Decode(fPort, bytes, variables) {
+  
+  var decode = {
+    "bytes": bytes,
+    "port": fPort,
+    "packet_type": "Unknown"
+  };
+
+  // Startup packets are on port 3
+  if(3 === fPort) {
+    
+    decode.packet_type = "Startup";
+    
+    // Bytes 0 - 11 are debug info
+    decode.debug = bytes.slice(0, 12);
+    
+    // Bytes 12 - 12 are firmware version, convert to string
+    decode.firmware_version = bytes[12] + '.' + bytes[13] + '.' + bytes[14];
+    
+    // Byte 15 is the reset reason, conver to string
+    decode.reset_reason = 0;
+    
+    switch (bytes[15]) {
+      case 1: decode.reset_reason = "Watchdog";
+              break;
+      case 2: decode.reset_reason = "Power On";
+              break;
+      case 3: decode.reset_reason = "System Request";
+             break;
+      case 4: decode.reset_reason = "Other";
+              break;
+      default: decoded.reset_reason = "Unknown";
+    } 
+    
+    // Final byte, 16, is seven reserved bits with the LSB being the current occupancy state
+    decode.occupied = false;
+    if(1 === (bytes[16] & 1)) {
+      decode.occupied = true;
+    }
+  }
+
+  // Parking status packets are on port 1
+  // Heartbeat packets are on port 2, but the same as status packets, so handled the same
+  if(1 === fPort || 2 === fPort) {
+    
+    if(1 === fPort) {
+      decode.packet_type = "Status";
+    } else {
+      decode.packet_type = "Heartbeat";
+    }
+
+    decode.occupied = (1 === bytes[0]) ? true : false;
+    
+  }
+
+
+  return decode;
+}
